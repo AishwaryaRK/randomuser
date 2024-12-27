@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -20,8 +21,23 @@ func NewHttpClient(timeout int) *HttpClient {
 	}
 }
 
+func isValidUrl(u string) bool {
+	urlOb, err := url.Parse(u)
+	if err != nil {
+		return false
+	}
+	if urlOb.Scheme == "" || urlOb.Host == "" {
+		return false
+	}
+	return true
+}
+
 func GetHttpJsonResponse[T any](hc *HttpClient, url string, obj *T) error {
-	// func GetHttpJsonResponse(hc *HttpClient, url string, obj *User) (*User, error) {
+	if !isValidUrl(url) {
+		err := fmt.Errorf("invalid url: %s", url)
+		log.Printf("%v", err)
+		return err
+	}
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -40,8 +56,8 @@ func GetHttpJsonResponse[T any](hc *HttpClient, url string, obj *T) error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		err := fmt.Errorf("http response status code not 200. Status code: %v, Status: %s", resp.StatusCode, resp.Status)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		err := fmt.Errorf("http response status code not 2xx. Status code: %d, Status: %s", resp.StatusCode, resp.Status)
 		log.Printf("%v", err)
 		return err
 	}
